@@ -500,9 +500,9 @@ static int wodan2_handler(request_rec *r)
 			/* if nothing can be received from backend, and
 			   nothing in cache, NOT_FOUND is the only option
 			   left... */
-			if ((response == HTTP_BAD_GATEWAY ||
-			     response == HTTP_GATEWAY_TIME_OUT) &&
-			    cache_status != WODAN_CACHE_PRESENT_EXPIRED) {
+			if ((response == HTTP_NOT_FOUND || response == HTTP_BAD_GATEWAY ||
+					response == HTTP_GATEWAY_TIME_OUT) &&
+					cache_status != WODAN_CACHE_PRESENT_EXPIRED) {
 			    	ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, r->server,
 			    		"return HTTP_NOT_FOUND");
 			    	return HTTP_NOT_FOUND;

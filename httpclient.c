@@ -406,9 +406,8 @@ static int receive_complete_response(wodan2_config_t *config,
 	if ((status = receive_status_line(connection, r, httpresponse)) == -1) 
 		return HTTP_BAD_GATEWAY;
 	
-	/* TODO: Check if this is OK */
-	if (config->cache_404s)
-		if (status == HTTP_NOT_FOUND) {
+	if (status == HTTP_NOT_FOUND) {
+		if (config->cache_404s) {
 			/* We have to duplicate the cache_get_cachefile call
 			 * because it writes headers, and we don't want any
 			 * headers in a 404 file. It only wastes space. */
@@ -416,8 +415,9 @@ static int receive_complete_response(wodan2_config_t *config,
 			cache_close_cachefile(config, r, cache_file);
 			// flush content to client
 			apr_file_flush(cache_file);
-			return HTTP_NOT_FOUND;
 		}
+			return HTTP_NOT_FOUND;
+	}
 	if (status == HTTP_NOT_MODIFIED) { /* = 304 */
 		return status;
 	}
