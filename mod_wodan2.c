@@ -37,11 +37,66 @@
 **    The sample page from mod_wodan2.c
 */ 
 
+#define WODAN_NAME "Wodan2"
+#define WODAN_VERSION "0.1"
+
+/* local includes */
+#include "datatypes.h"
+
+/* Apache includes */
 #include "httpd.h"
 #include "http_config.h"
 #include "http_protocol.h"
 #include "ap_config.h"
+#include "apr_strings.h"
 
+
+
+/* initialize Wodan2 */
+static int wodan2_init_handler(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
+	server_rec *s)
+{
+	const char *identifier_string;
+	
+	identifier_string = apr_psprintf(p, "%s/%s", WODAN_NAME, WODAN_VERSION);
+	ap_add_version_component(p, identifier_string);
+	
+	return OK;
+}                          
+
+/* create a new config struct. We keep it very simple, by initializing 
+ * everything to zero. Only create some arrays, because we'll need them
+ * later on
+ */
+static void *wodan2_create_config(apr_pool_t *p)
+{
+	wodan_reverseproxy_config_t* config = (wodan_reverseproxy_config_t*) 
+		ap_pcalloc(p, sizeof(wodan_reverseproxy_config_t));
+	
+	config->cachedir_levels = DEFAULT_CACHEDIR_LEVELS;
+	config->reverseproxypasses = apr_array_make(p, 0, 
+		sizeof(wodan_proxy_destination_t));
+	config->reverseproxypassesreverse = apr_array_make(p, 0,
+		sizeof(wodan_proxy_alias_t));
+	config->defaultcachetimes = apr_array_make(p, 0,
+		sizeof(wodan_default_cachetime_t));
+	config->defaultcachetimes_regex = apr_array_make(p, 0,
+		sizeof(wodan_default_cachetime_regex_t));
+	config->defaultcachetimes_header = apr_array_make(p, 0,
+		sizeof(wodan_default_cachetime_header_t));	
+	return config;		
+}
+
+static void *wodan2_create_server_config(apr_pool_t *p, server_rec *s)
+{
+	return wodan2_create_config(p);
+}
+
+static void *wodan2_create_dir_config(apr_pool_t *p, char *dir)
+{
+	return wodan2_create_config(p);
+}
+	                         
 /* The sample content handler */
 static int wodan2_handler(request_rec *r)
 {
@@ -57,15 +112,16 @@ static int wodan2_handler(request_rec *r)
 
 static void wodan2_register_hooks(apr_pool_t *p)
 {
+	ap_hook_post_config(wodan2_init_handler, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_handler(wodan2_handler, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
 /* Dispatch list for API hooks */
 module AP_MODULE_DECLARE_DATA wodan2_module = {
     STANDARD20_MODULE_STUFF, 
-    NULL,                  /* create per-dir    config structures */
+    wodan2_create_dir_config,   /* create per-dir    config structures */
     NULL,                  /* merge  per-dir    config structures */
-    NULL,                  /* create per-server config structures */
+    wodan2_create_server_config,/* create per-server config structures */
     NULL,                  /* merge  per-server config structures */
     NULL,                  /* table of config file commands       */
     wodan2_register_hooks  /* register hooks                      */

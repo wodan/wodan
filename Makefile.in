@@ -15,6 +15,7 @@ APACHECTL=$(apache_dir)/bin/apachectl
 
 #   additional defines, includes and libraries
 #DEFS=-Dmy_define=my_value
+DEFS=@DEFS@
 INCLUDES=-I$(apache_dir)/include
 #LIBS=-Lmy/lib/dir -lmylib
 

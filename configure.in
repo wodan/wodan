@@ -17,10 +17,7 @@
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 AC_PREREQ(2.57)
-AC_INIT(Wodan2, 0.1, bugs@wodan.net)
-AC_CONFIG_SRCDIR([mod_wodan2.c])
-AC_CONFIG_HEADER([config.h])
-
+AC_INIT()
 # Checks for programs.
 AC_PROG_CC
 
