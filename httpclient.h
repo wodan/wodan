@@ -31,10 +31,5 @@ int http_proxy (wodan2_config_t *config, const char* host, char* uri,
 	struct httpresponse* httpresponse, request_rec *r, 
 	struct timeval backend_timeout, apr_time_t cache_file_time);
 
-/**
- * Remove all connection based header from the table
- * Copied from mod_proxy
- */
-void ap_reverseproxy_clear_connection(apr_pool_t *p, apr_table_t *headers);
 
 #endif

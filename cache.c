@@ -341,7 +341,7 @@ static apr_time_t parse_xwodan_expire(request_rec *r,
 	return expire_time;
 }
 
-char *get_expire_time(wodan2_config_t *config,
+static char *get_expire_time(wodan2_config_t *config,
 		      request_rec *r, struct httpresponse *httpresponse,
 		      int *cachetime_interval)
 {
@@ -399,7 +399,7 @@ char *get_expire_time(wodan2_config_t *config,
 	return expire_time_rfc822_string;
 }
 
-apr_file_t *open_cachefile(wodan2_config_t *config, request_rec *r)
+static apr_file_t *open_cachefile(wodan2_config_t *config, request_rec *r)
 {
 	apr_file_t *cachefile = NULL;
 	char *cachefilename;
@@ -473,6 +473,7 @@ apr_file_t *cache_get_cachefile(wodan2_config_t *config, request_rec *r,
 	char *expire = NULL;
 	int expire_interval = 0;
 	char *tempfile_template;
+	char *temp_dir;	
 	
 	if(!is_cachedir_set(config)) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0,
@@ -492,12 +493,16 @@ apr_file_t *cache_get_cachefile(wodan2_config_t *config, request_rec *r,
 	
 	if ((char *) ap_strcasestr(r->unparsed_uri, "cache=no") != NULL)
 		return NULL;
-	
 	if ((expire = get_expire_time(config, r, httpresponse,
 				      &expire_interval)) == NULL)
 		return NULL;
 	
-	tempfile_template = apr_pstrdup(r->pool, "wodan_temp_XXXXXX");
+	if (apr_temp_dir_get((const char **) &temp_dir, r->pool) != APR_SUCCESS) {
+		ap_log_error(APLOG_MARK, APLOG_ERR, 0,
+			r->server, "unable to find temp dir");
+		return NULL;
+	}
+	tempfile_template = apr_psprintf(r->pool, "%s/wodan_temp_XXXXXX", temp_dir);
 	if (apr_file_mktemp(&cache_file, tempfile_template, 0, r->pool) != APR_SUCCESS)
 		return NULL;
 	
@@ -509,7 +514,6 @@ apr_file_t *cache_get_cachefile(wodan2_config_t *config, request_rec *r,
 		apr_file_close(cache_file);
 		return NULL;
 	}
-
 	return cache_file;
 }
 
@@ -524,6 +528,10 @@ void cache_close_cachefile(wodan2_config_t *config, request_rec *r,
 
 	/* open the real cache file (until now, only a temporary file
 	   was openened) */
+	if (!temp_cachefile) {
+		ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, r->server,
+			"no temp cachefile");
+	}
 	if (temp_cachefile) {
 		if ((real_cachefile = open_cachefile(config, r)) == NULL) {
 			apr_file_close(temp_cachefile);
