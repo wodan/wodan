@@ -13,6 +13,7 @@
 /* local includes */
 #include "cache.h"
 #include "datatypes.h"
+#include "httpclient.h"
 #include "match.h"
 #include "util.h"
 
@@ -114,8 +115,10 @@ module AP_MODULE_DECLARE_DATA wodan2_module = {
 };
 
 /* initialize Wodan2 */
-static int wodan2_init_handler(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
-	server_rec *s)
+static int wodan2_init_handler(apr_pool_t *p, 
+	apr_pool_t *plog WODAN_UNUSED_PARAMETER, 
+	apr_pool_t *ptemp WODAN_UNUSED_PARAMETER,
+	server_rec *s WODAN_UNUSED_PARAMETER)
 {
 	const char *identifier_string;
 	
@@ -144,12 +147,14 @@ static void *wodan2_create_config(apr_pool_t *p)
 	return config;		
 }
 
-static void *wodan2_create_server_config(apr_pool_t *p, server_rec *s)
+static void *wodan2_create_server_config(apr_pool_t *p, 
+	server_rec *s WODAN_UNUSED_PARAMETER)
 {
 	return wodan2_create_config(p);
 }
 
-static void *wodan2_create_dir_config(apr_pool_t *p, char *dir)
+static void *wodan2_create_dir_config(apr_pool_t *p, 
+	char *dir WODAN_UNUSED_PARAMETER)
 {
 	return wodan2_create_config(p);
 }
@@ -200,8 +205,8 @@ static void *wodan2_merge_config(apr_pool_t *p, void *base_config_p,
 }               
 /* The sample content handler */
 
-static const char *add_pass(cmd_parms *cmd, void *dummy, const char *path,
-	const char *url)
+static const char *add_pass(cmd_parms *cmd, void *dummy WODAN_UNUSED_PARAMETER, 
+	const char *path, const char *url)
 {
 	server_rec *s = cmd->server;
 	wodan2_config_t *config = (wodan2_config_t *)
@@ -226,8 +231,8 @@ static const char *add_pass(cmd_parms *cmd, void *dummy, const char *path,
 	return NULL;
 }
 
-static const char *add_pass_reverse(cmd_parms *cmd, void *dummy, const char *path,
-	const char *url)
+static const char *add_pass_reverse(cmd_parms *cmd,
+	void *dummy WODAN_UNUSED_PARAMETER, const char *path, const char *url)
 {
 	server_rec *s = cmd->server;
 	wodan2_config_t *config = (wodan2_config_t *)
@@ -246,7 +251,8 @@ static const char *add_pass_reverse(cmd_parms *cmd, void *dummy, const char *pat
 	return NULL;
 }
 
-static const char *add_cachedir(cmd_parms *cmd, void *dummy, const char *path)
+static const char *add_cachedir(cmd_parms *cmd, void *dummy WODAN_UNUSED_PARAMETER, 
+	const char *path)
 {
 	server_rec *s = cmd->server;
 	wodan2_config_t *config = (wodan2_config_t *)
@@ -273,8 +279,8 @@ static const char *add_cachedir(cmd_parms *cmd, void *dummy, const char *path)
 	return NULL;
 }	
 
-static const char *add_cachedir_levels(cmd_parms *cmd, void *dummy, 
-	const char *level)
+static const char *add_cachedir_levels(cmd_parms *cmd, 
+	void *dummy WODAN_UNUSED_PARAMETER, const char *level)
 {
 	server_rec *s = cmd->server;
 	wodan2_config_t *config = (wodan2_config_t *)
@@ -300,8 +306,8 @@ static const char *add_cachedir_levels(cmd_parms *cmd, void *dummy,
 	return NULL;
 }	
 
-static const char *add_default_cachetime(cmd_parms *cmd, void *dummy,
-	const char *path, const char *time_string)
+static const char *add_default_cachetime(cmd_parms *cmd, 
+	void *dummy WODAN_UNUSED_PARAMETER, const char *path, const char *time_string)
 {
 	server_rec *s = cmd->server;
 	wodan2_config_t *config = (wodan2_config_t *)
@@ -324,7 +330,8 @@ static const char *add_default_cachetime(cmd_parms *cmd, void *dummy,
 }
 
 static const char* add_default_cachetime_regex(cmd_parms *cmd, 
-	void *dummy, const char *regex_pattern, const char *time_string)
+	void *dummy WODAN_UNUSED_PARAMETER, const char *regex_pattern, 
+	const char *time_string)
 {
 	server_rec *s = cmd->server;
 	wodan2_config_t *config = (wodan2_config_t *)
@@ -353,10 +360,9 @@ static const char* add_default_cachetime_regex(cmd_parms *cmd,
 	return NULL;
 }
 
-static const char* add_default_cachetime_header(cmd_parms *cmd, void *dummy,
-					       const char *http_header,
-					       const char *regex_pattern,
-					       const char *time_string)
+static const char* add_default_cachetime_header(cmd_parms *cmd, 
+	void *dummy WODAN_UNUSED_PARAMETER, const char *http_header, 
+	const char *regex_pattern, const char *time_string)
 {
 	server_rec *s = cmd->server;
 	wodan2_config_t *config = (wodan2_config_t *)
@@ -385,8 +391,8 @@ static const char* add_default_cachetime_header(cmd_parms *cmd, void *dummy,
 	return NULL;
 }
 
-static const char* add_run_on_cache(cmd_parms *cmd, void *dummy,
-				  int flag)
+static const char* add_run_on_cache(cmd_parms *cmd, 
+	void *dummy WODAN_UNUSED_PARAMETER, int flag)
 {
 	wodan2_config_t *config = (wodan2_config_t *)
 		ap_get_module_config(cmd->server->module_config, &wodan2_module);
@@ -396,7 +402,8 @@ static const char* add_run_on_cache(cmd_parms *cmd, void *dummy,
 	return NULL;
 }
 
-static const char *add_cache_404s(cmd_parms *cmd, void *dummy, int flag)
+static const char *add_cache_404s(cmd_parms *cmd, 
+	void *dummy WODAN_UNUSED_PARAMETER, int flag)
 {
 	wodan2_config_t *config = (wodan2_config_t *)
 		ap_get_module_config(cmd->server->module_config, &wodan2_module);
@@ -406,8 +413,8 @@ static const char *add_cache_404s(cmd_parms *cmd, void *dummy, int flag)
 	return NULL;
 }
 
-static const char *add_backend_timeout(cmd_parms *cmd, void *dummy,
-	const char *timeout_string)
+static const char *add_backend_timeout(cmd_parms *cmd,
+	void *dummy WODAN_UNUSED_PARAMETER, const char *timeout_string)
 {
 	wodan2_config_t *config = (wodan2_config_t *)
 		ap_get_module_config(cmd->server->module_config, &wodan2_module);
@@ -428,7 +435,7 @@ static const char *add_backend_timeout(cmd_parms *cmd, void *dummy,
 	return NULL;
 }
 
-static void wodan2_register_hooks(apr_pool_t *p)
+static void wodan2_register_hooks(apr_pool_t *p WODAN_UNUSED_PARAMETER)
 {
 	ap_hook_post_config(wodan2_init_handler, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_handler(wodan2_handler, NULL, NULL, APR_HOOK_MIDDLE);
@@ -440,7 +447,7 @@ static int wodan2_handler(request_rec *r)
 	httpresponse_t httpresponse;
 	WodanCacheStatus_t cache_status;
 	int response = HTTP_BAD_GATEWAY;
-	time_t cache_file_time;
+	apr_time_t cache_file_time;
 	
 	config = (wodan2_config_t *)
 		ap_get_module_config(r->server->module_config, &wodan2_module);
@@ -480,7 +487,7 @@ static int wodan2_handler(request_rec *r)
 				     proxy_destination->url, newpath);
 			
 			//Get the httpresponse from remote server	
-			response = http_proxy(proxy_destination->url, newpath, 
+			response = http_proxy(config, proxy_destination->url, newpath, 
 					      &httpresponse, r, 
 					      config->backend_timeout, cache_file_time);
 			/* If 404 are to be cached, then already return

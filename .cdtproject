@@ -2,17 +2,29 @@
 <?eclipse-cdt version="2.0"?>
 
 <cdtproject id="org.eclipse.cdt.make.core.make">
-<extension point="org.eclipse.cdt.core.BinaryParser" id="org.eclipse.cdt.core.MachO"/>
+<extension point="org.eclipse.cdt.core.BinaryParser" id="org.eclipse.cdt.core.MachO">
+<attribute key="c++filt" value="c++filt"/>
+</extension>
 <data>
 <item id="org.eclipse.cdt.core.pathentry">
-<pathentry kind="inc" path="" include="/Users/ilja/apache2/include"/>
-<pathentry kind="inc" path="" include="/usr/include"/>
 <pathentry kind="src" path=""/>
 <pathentry kind="out" path=""/>
+<pathentry kind="inc" path="" include="/Users/ilja/apache2/include"/>
+<pathentry kind="inc" path="" include="/usr/include"/>
 </item>
 <item id="cdt_indexer">
 <indexEnabled indexValue="true"/>
 <indexerProblemsEnabled indexProblemsValue="7"/>
+</item>
+<item id="org.eclipse.cdt.make.core.buildtargets">
+<buildTargets>
+<target name="all_devel" targetID="org.eclipse.cdt.make.MakeTargetBuilder" path="">
+<buildCommand>make</buildCommand>
+<buildTarget>all_devel</buildTarget>
+<stopOnError>true</stopOnError>
+<useDefaultCommand>true</useDefaultCommand>
+</target>
+</buildTargets>
 </item>
 </data>
 </cdtproject>

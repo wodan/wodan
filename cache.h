@@ -9,6 +9,8 @@
 
 #include "datatypes.h"
 
+#include "apr_time.h"
+
 /**
  * This is used when allocating buffers to work with
  */
@@ -38,7 +40,7 @@ typedef enum {
  *      - WODAN_CACHE_404 for requests that are cached as a 404 (not found)
  */
 WodanCacheStatus_t cache_get_status(wodan2_config_t *config, request_rec *r, 
-	time_t *cache_file_time);
+	apr_time_t *cache_file_time);
 
 /**
  * Look whether the request can be handled from the cache.

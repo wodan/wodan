@@ -17,7 +17,14 @@
 
 #define DEFAULT_CACHETIME 3600
 
+#ifdef __GNUC__
+#define WODAN_UNUSED_PARAMETER __attribute__((__unused__))
+#else
+#define WODAN_UNUSED_PARAMETER
+#endif
+
 #include "httpd.h"
+#include "apr_network_io.h"
 #include "apr_tables.h"
 #include "apr_time.h"
 #include "apr_strmatch.h"
@@ -91,10 +98,13 @@ typedef struct wodan2_default_cachetime_header {
 /**
  * Structure representing an httpresponse
  */
-typedef struct httpresponse{
+typedef struct httpresponse {
 	char* content_type;//The content type of the data
 	apr_table_t* headers;//A table containing the headers
 	int response;//The response code
 } httpresponse_t;
 
+typedef struct network_connection {
+	apr_socket_t *socket;
+} network_connection_t;
 #endif //_DATATYPES_H_

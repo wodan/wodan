@@ -13,8 +13,9 @@ include $(apache_dir)/build/special.mk
 APXS=$(apache_dir)/bin/apxs
 APACHECTL=$(apache_dir)/bin/apachectl
 
-SOURCE_FILES=mod_wodan2.c cache.c match.c util.c 
-INCLUDE_FILES=cache.h match.h util.h
+SOURCE_FILES=mod_wodan2.c cache.c httpclient.c networkconnector.c match.c timeout.c util.c 
+INCLUDE_FILES=cache.h httpclient.h networkconnector.h match.h timeout.h util.h
+OBJECT_FILES=mod_wodan2.o cache.o httpclient.o networkconnector.o match.o timeout.o util.o
 
 #   additional defines, includes and libraries
 #DEFS=-Dmy_define=my_value
@@ -24,6 +25,8 @@ INCLUDES=-I$(apache_dir)/include
 
 #   the default target
 all: mod_wodan.so
+
+all_devel: $(OBJECT_FILES)
 
 mod_wodan.so: $(SOURCE_FILES) $(INCLUDE_FILES)
 	$(APXS) -c $(DEFS) $(INCLUDES) $(LIBS) $(SOURCE_FILES)
@@ -53,3 +56,14 @@ restart:
 stop:
 	$(APACHECTL) stop
 
+# only for development:
+-include $(OBJS:.o=.d)
+
+%.o: %.c
+	gcc -c $(DEFS) $(INCLUDES) $*.c -o $*.o
+	gcc -MM $(DEFS) $(INCLUDES) $*.c > $*.d
+
+clean-devel:
+	-rm -f *o *d *lo *slo *la mod_wodan.so 
+
+	 
