@@ -1,0 +1,66 @@
+# $Id$
+# Copyright (C) 2005 IC & S  wodan@ic-s.nl
+#
+# This program is free software; you can redistribute it and/or 
+# modify it under the terms of the GNU General Public License 
+# as published by the Free Software Foundation; either 
+# version 2 of the License, or (at your option) any later 
+# version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+AC_PREREQ(2.57)
+AC_INIT(Wodan2, 0.1, bugs@wodan.net)
+AC_CONFIG_SRCDIR([mod_wodan2.c])
+AC_CONFIG_HEADER([config.h])
+
+# Checks for programs.
+AC_PROG_CC
+AC_PROG_INSTALL
+
+# Checks for libraries.
+
+# Checks for header files.
+
+# Checks for typedefs, structures, and compiler characteristics.
+
+# Checks for library functions.
+
+# Some functions we created specifically for Wodan (taken from Wodan for Apache 1.3)
+AC_DEFUN([CHECK_APACHE_DIR],[
+  AC_ARG_WITH(
+    apache,
+    [  --with-apache[=DIR]       Apache server directory],
+    ,
+    [with_apache="no"]
+  )
+
+  AC_MSG_CHECKING(for Apache directory)
+
+  if test "$with_apache" = "no"; then
+    AC_MSG_ERROR( Specify the apache using --with-apache)
+  else
+    # make sure that a well known include file exists
+    if test -e $with_apache/include/httpd.h; then
+      apache_dir=$with_apache
+      AC_MSG_RESULT(APACHE found!)
+    else
+      AC_MSG_ERROR( $with_apache not found. )
+    fi
+  fi
+])
+
+# call custom functions
+CHECK_APACHE_DIR
+
+AC_SUBST(apache_dir)
+
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT
