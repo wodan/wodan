@@ -36,4 +36,11 @@ int util_string_is_number(const char *the_string);
  */
 apr_int32_t util_timestring_to_seconds(char *string);
 
+/**
+ * Walk the pointer and skip all spaces
+ * @param input The char*
+ * @return A char* to the result location after skipping all spaces
+ */
+char* util_skipspaces (char* input);
+
 #endif //_UTIL_H_

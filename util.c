@@ -107,3 +107,12 @@ apr_int32_t util_timestring_to_seconds(char *string)
 		number = MAX_CACHE_TIMEOUT;
 	return number;
 }
+
+char* util_skipspaces (char* input)
+{
+	while(*input == ' ')
+	{
+		input++;
+	}
+	return input;
+}

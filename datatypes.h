@@ -13,6 +13,10 @@
  * you'd ever want to use that long a timeout) */ 
 #define MAX_CACHE_TIMEOUT 60 * 60 * 24 * 365
 
+#define BUFFERSIZE 2048
+
+#define DEFAULT_CACHETIME 3600
+
 #include "httpd.h"
 #include "apr_tables.h"
 #include "apr_time.h"
@@ -71,7 +75,7 @@ typedef struct wodan2_default_cachetime {
  * Structure containting info for the DefaultCacheTimeRegex directive
  */
 typedef struct wodan2_default_cachetime_regex {
-	const regex_t *uri_pattern;
+	regex_t *uri_pattern;
 	apr_int32_t cachetime;
 } wodan2_default_cachetime_regex_t;
 
@@ -80,7 +84,17 @@ typedef struct wodan2_default_cachetime_regex {
  */
 typedef struct wodan2_default_cachetime_header {
 	const char *header;
-	const regex_t *header_value_pattern;
+	regex_t *header_value_pattern;
 	apr_int32_t cachetime;
 } wodan2_default_cachetime_header_t;
+
+/**
+ * Structure representing an httpresponse
+ */
+typedef struct httpresponse{
+	char* content_type;//The content type of the data
+	apr_table_t* headers;//A table containing the headers
+	int response;//The response code
+} httpresponse_t;
+
 #endif //_DATATYPES_H_

@@ -5,17 +5,26 @@
 #define WODAN_NAME "Wodan2"
 #define WODAN_VERSION "0.1"
 
+/* constants identifying the source of the returned (to the client) object */
+#define LOG_SOURCE_CACHED "Cached"
+#define LOG_SOURCE_BACKEND "Backend"
+#define LOG_SOURCE_CACHED_BACKEND_ERROR "CachedBackendError"
+
 /* local includes */
+#include "cache.h"
 #include "datatypes.h"
+#include "match.h"
 #include "util.h"
 
 /* Apache includes */
 #include "httpd.h"
 #include "http_config.h"
+#include "http_log.h"
 #include "http_protocol.h"
 #include "ap_config.h"
 #include "apr_strings.h"
 #include <string.h>
+#include <time.h>
 
 /*
  * Function prototypes.
@@ -418,29 +427,104 @@ static const char *add_backend_timeout(cmd_parms *cmd, void *dummy,
 
 	return NULL;
 }
-static int wodan2_handler(request_rec *r)
-{
-    if (strcmp(r->handler, "wodan2")) {
-        return DECLINED;
-    }
-    r->content_type = "text/html";      
-
-    if (!r->header_only) {
-    		void *sconf;
-    		wodan2_config_t *config;
-    		sconf = r->server->module_config;
-    		config = (wodan2_config_t *) 
-    			ap_get_module_config(sconf, &wodan2_module);
-     	char *page = apr_psprintf(r->pool, "run on cache = %d\n", config->run_on_cache);
-		ap_rputs(page, r);
-    }
-    return OK;
-}
 
 static void wodan2_register_hooks(apr_pool_t *p)
 {
 	ap_hook_post_config(wodan2_init_handler, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_handler(wodan2_handler, NULL, NULL, APR_HOOK_MIDDLE);
+}
+
+static int wodan2_handler(request_rec *r)
+{
+	wodan2_config_t* config;
+	httpresponse_t httpresponse;
+	WodanCacheStatus_t cache_status;
+	int response = HTTP_BAD_GATEWAY;
+	time_t cache_file_time;
+	
+	config = (wodan2_config_t *)
+		ap_get_module_config(r->server->module_config, &wodan2_module);
+	
+	// TODO: check if is is perhaps a better idea to create a table of a certain size
+	httpresponse.headers = apr_table_make(r->pool, 0);
+	
+	ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, r->server, 
+		     "Processing new request: %s", r->unparsed_uri);
+
+	// see if the request can be handled from the cache.
+	cache_status = cache_get_status(config, r, &cache_file_time);
+
+	if (config->cache_404s) {
+		if (cache_status == WODAN_CACHE_404) {
+			ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0,
+			             r->server, "URL is cached as 404");
+			return HTTP_NOT_FOUND;
+		}
+	}
+	
+	if (cache_status != WODAN_CACHE_PRESENT) {
+		/* attempt to get data from backend */
+		wodan2_proxy_destination_t *proxy_destination =
+			destination_longest_match(config, r->uri);
+
+		if(proxy_destination != NULL)//FIXME what if destination is NULL
+		{
+			char* newpath;
+			int l = (int) strlen(proxy_destination->path);
+			newpath = &(r->unparsed_uri[l - 1]);
+			
+			ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0,
+				     r->server, 
+				     "No cache, getting content from remote "
+				     "url: %s path: %s", 
+				     proxy_destination->url, newpath);
+			
+			//Get the httpresponse from remote server	
+			response = http_proxy(proxy_destination->url, newpath, 
+					      &httpresponse, r, 
+					      config->backend_timeout, cache_file_time);
+			/* If 404 are to be cached, then already return
+			 * default 404 page here in case of a 404. */
+			if (config->cache_404s)
+				if (response == HTTP_NOT_FOUND)
+					return HTTP_NOT_FOUND;
+
+			/* if nothing can be received from backend, and
+			   nothing in cache, NOT_FOUND is the only option
+			   left... */
+			if ((response == HTTP_BAD_GATEWAY ||
+			     response == HTTP_GATEWAY_TIME_OUT) &&
+			    cache_status != WODAN_CACHE_PRESENT_EXPIRED)
+				return HTTP_NOT_FOUND;
+			else if (response != HTTP_BAD_GATEWAY &&
+				 response != HTTP_GATEWAY_TIME_OUT &&
+				 response != HTTP_NOT_MODIFIED) {
+				ap_log_error(APLOG_MARK, 
+					     APLOG_NOERRNO|APLOG_DEBUG, 0, r->server,
+					     "Got response from gateway");
+			} 
+		}
+	}
+
+	if (cache_status == WODAN_CACHE_PRESENT) {
+	  	cache_read_from_cache(config, r, &httpresponse);
+		apr_table_set(r->notes, "WodanSource", LOG_SOURCE_CACHED);
+	} else if (cache_status == WODAN_CACHE_PRESENT_EXPIRED &&
+		   (response == HTTP_BAD_GATEWAY || 
+		    response == HTTP_GATEWAY_TIME_OUT ||
+		    response == HTTP_NOT_MODIFIED)) {
+	  	cache_read_from_cache(config, r, &httpresponse);
+		cache_update_expiry_time(config, r);
+		apr_table_set(r->notes, "WodanSource", LOG_SOURCE_CACHED_BACKEND_ERROR);
+	} else {
+		apr_table_set(r->notes, "WodanSource", LOG_SOURCE_BACKEND);
+	}
+
+	//Return some response code
+	ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, r->server, 
+		     "returning: %d",  httpresponse.response);
+	
+	return OK; 
 }
 
 

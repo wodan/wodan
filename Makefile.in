@@ -13,12 +13,12 @@ include $(apache_dir)/build/special.mk
 APXS=$(apache_dir)/bin/apxs
 APACHECTL=$(apache_dir)/bin/apachectl
 
-SOURCE_FILES=mod_wodan2.c util.c
-INCLUDE_FILES=util.h
+SOURCE_FILES=mod_wodan2.c cache.c match.c util.c 
+INCLUDE_FILES=cache.h match.h util.h
 
 #   additional defines, includes and libraries
 #DEFS=-Dmy_define=my_value
-DEFS=-Wall -Werror
+DEFS=-W -Wall -Wpointer-arith -Wstrict-prototypes
 INCLUDES=-I$(apache_dir)/include
 #LIBS=-Lmy/lib/dir -lmylib
 
