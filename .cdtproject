@@ -5,9 +5,14 @@
 <extension point="org.eclipse.cdt.core.BinaryParser" id="org.eclipse.cdt.core.MachO"/>
 <data>
 <item id="org.eclipse.cdt.core.pathentry">
+<pathentry kind="inc" path="" include="/Users/ilja/apache2/include"/>
+<pathentry kind="inc" path="" include="/usr/include"/>
 <pathentry kind="src" path=""/>
 <pathentry kind="out" path=""/>
-<pathentry kind="inc" path="" include="/Users/ilja/apache2/include"/>
+</item>
+<item id="cdt_indexer">
+<indexEnabled indexValue="true"/>
+<indexerProblemsEnabled indexProblemsValue="7"/>
 </item>
 </data>
 </cdtproject>

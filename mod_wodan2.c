@@ -15,8 +15,94 @@
 #include "http_protocol.h"
 #include "ap_config.h"
 #include "apr_strings.h"
+#include <string.h>
 
-module AP_MODULE_DECLARE_DATA wodan2_module;
+/*
+ * Function prototypes.
+ */
+ 
+/* initializer for Wodan2 */
+static int wodan2_init_handler(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
+	server_rec *s);
+/* create initial server configuration. */
+static void *wodan2_create_server_config(apr_pool_t *p, server_rec *s);
+/* create per-dir server configuration */
+static void *wodan2_create_dir_config(apr_pool_t *p, char *dir);
+/* merge two config structures. */
+static void *wodan2_merge_config(apr_pool_t *p, void *base_config_p, 
+	void *new_config_p);
+/* add a WodanPass config to the configuration */
+static const char *add_pass(cmd_parms *cmd, void *dummy, const char *path,
+	const char *url);
+/* add a WodanPassReverse config to the configuration */
+static const char *add_pass_reverse(cmd_parms *cmd, void *dummy, const char *path,
+	const char *url);
+/* add cachedir */	
+static const char *add_cachedir(cmd_parms *cmd, void *dummy, const char *path);
+/* set level of cachedir nesting */
+static const char *add_cachedir_levels(cmd_parms *cmd, void *dummy, 
+	const char *level);
+/* add a default cachetime for a path */
+static const char *add_default_cachetime(cmd_parms *cmd, void *dummy,
+	const char *path, const char *time_string);
+/* add a default cachetime for a path matching a regular expression */
+static const char* add_default_cachetime_regex(cmd_parms *cmd, 
+	void *dummy, const char *regex_pattern, const char *time_string);
+/* add a default cachetime for a header whose value matches a regular expression */
+static const char* add_default_cachetime_header(cmd_parms *cmd, void *dummy, 
+	const char *http_header, const char *regex_pattern, const char *time_string);
+/* add a flag to run completely on the cache (i.e. do not try to contact the 
+ * backend */
+static const char* add_run_on_cache(cmd_parms *cmd, void *dummy, int flag);
+/* add a flag to cache 404 pages. */
+static const char* add_cache_404s(cmd_parms *cmd, void *dummy, int flag);
+/* add a backend timeout */
+static const char *add_backend_timeout(cmd_parms *cmd, void *dummy,
+	const char *timeout_string);
+
+/* hook registering function */
+static void wodan2_register_hooks(apr_pool_t *p);
+	
+/* The content handler function. This is the main function of Wodan2 */
+static int wodan2_handler(request_rec *r);
+
+/**
+ * The configuration directives and their setup functions.
+ */
+static const command_rec wodan2_commands[] = 
+{
+	AP_INIT_TAKE12("WodanPass", add_pass, NULL, RSRC_CONF, "A path and a URL"),
+	AP_INIT_TAKE12("WodanPassReverse", add_pass_reverse, 
+		NULL, RSRC_CONF, "A path and a URL"),
+	AP_INIT_TAKE1("WodanCacheDir", add_cachedir, NULL, RSRC_CONF, "A path"),
+	AP_INIT_TAKE1("WodanCacheDirLevels", add_cachedir_levels, NULL, RSRC_CONF, 
+		"A Number (> 0)"),
+	AP_INIT_TAKE2("WodanDefaultCacheTime", add_default_cachetime, NULL, RSRC_CONF,
+		"A path and a time string"),
+	AP_INIT_TAKE2("WodanDefaultCacheTimeMatch", add_default_cachetime_regex,
+		NULL, RSRC_CONF, "A regex pattern and a time string"),
+	AP_INIT_TAKE123("WodanDefaultCacheTimeHeaderMatch", 
+		add_default_cachetime_header, NULL, RSRC_CONF, 
+		"A header, a regex pattern and a time string"),
+	AP_INIT_FLAG("WodanRunOnCache", add_run_on_cache, NULL, RSRC_CONF,
+		"run completely on cache"),
+	AP_INIT_FLAG("WodanCache404s", add_cache_404s, NULL, RSRC_CONF,
+		"cache 404 pages"),
+	AP_INIT_TAKE1("WodanBackendTimeout", add_backend_timeout, NULL, RSRC_CONF,
+		"a number, which represents a time in miliseconds"),
+	{NULL}
+};
+/* The module. Apache uses this information to initialise and hook up
+ * the module into the webserver. */
+module AP_MODULE_DECLARE_DATA wodan2_module = {
+    STANDARD20_MODULE_STUFF, 
+    wodan2_create_dir_config,   /* create per-dir    config structures */
+	wodan2_merge_config,                  /* merge  per-dir    config structures */
+    wodan2_create_server_config,/* create per-server config structures */
+    wodan2_merge_config,                  /* merge  per-server config structures */
+    wodan2_commands,                  /* table of config file commands       */
+    wodan2_register_hooks  /* register hooks                      */
+};
 
 /* initialize Wodan2 */
 static int wodan2_init_handler(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp,
@@ -30,10 +116,6 @@ static int wodan2_init_handler(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptem
 	return OK;
 }                          
 
-/* create a new config struct. We keep it very simple, by initializing 
- * everything to zero. Only create some arrays, because we'll need them
- * later on
- */
 static void *wodan2_create_config(apr_pool_t *p)
 {
 	wodan2_config_t* config = (wodan2_config_t *) 
@@ -85,7 +167,8 @@ static void *wodan2_merge_config(apr_pool_t *p, void *base_config_p,
 		config->run_on_cache = 1;
 	if (new_config->cache_404s == 1 || base_config->cache_404s == 1)
 		config->cache_404s = 1;
-	if (new_config->backend_timeout > 0) 
+	if (new_config->backend_timeout.tv_sec != 0 ||
+	    new_config->backend_timeout.tv_usec != 0)
 		config->backend_timeout = new_config->backend_timeout;
 	else
 		config->backend_timeout = base_config->backend_timeout;
@@ -117,7 +200,7 @@ static const char *add_pass(cmd_parms *cmd, void *dummy, const char *path,
 	wodan2_proxy_destination_t *proxy_destination;
 	char *proxy_url;
 	
-	if(path[0] != '/' || path[strlen(path) - 1] != '/')
+	if(path[0] != '/' || path[(int) strlen(path) - 1] != '/')
 	        return "First argument of WodanPass should be a dir e.g. /dir/";
 	if (strncasecmp(url, "http://", 7) != 0) 
 		return "Second argument of WodanPass should be a "
@@ -125,8 +208,8 @@ static const char *add_pass(cmd_parms *cmd, void *dummy, const char *path,
 	
 	proxy_url = apr_pstrdup(cmd->pool, url);
 	/* strip final '/' of proxy_url */
-	if (proxy_url[strlen(proxy_url) - 1] == '/')
-		proxy_url[strlen(proxy_url) - 1] = '\0';
+	if (proxy_url[(int) strlen(proxy_url) - 1] == '/')
+		proxy_url[(int) strlen(proxy_url) - 1] = '\0';
 	
 	proxy_destination = apr_array_push(config->proxy_passes);
 	proxy_destination->path = path;
@@ -142,7 +225,7 @@ static const char *add_pass_reverse(cmd_parms *cmd, void *dummy, const char *pat
 		ap_get_module_config(s->module_config, &wodan2_module);
 	wodan2_proxy_destination_t *proxy_alias;
 	
-	if(path[0] != '/' || path[strlen(path) - 1] != '/')
+	if(path[0] != '/' || path[(int) strlen(path) - 1] != '/')
 	        return "First argument of WodanPassReverse should be a dir e.g. /dir/";
 	if (strncasecmp(url, "http://", 7) != 0) 
 		return "Second argument of WodanPassReverse should be a "
@@ -162,14 +245,16 @@ static const char *add_cachedir(cmd_parms *cmd, void *dummy, const char *path)
 	
 	if (!ap_is_directory(cmd->pool, path)) {
 		char *error_message = apr_psprintf(cmd->pool, 
-			"CacheDir %s is not a directory!", path);
+			"WodanCacheDir %s is not a directory!", path);
 		return error_message;
 	}
 	
 	if (!util_file_is_writable(cmd->pool, path))
 	{
+		
 		char *error_message = apr_psprintf(cmd->pool,
-			"Cachedir %s is not writable!", path);
+			"WodanCachedir %s should be owned by Wodan user and should be writable!"
+			"by that user!", path);
 		return error_message;
 	}
 	
@@ -178,9 +263,161 @@ static const char *add_cachedir(cmd_parms *cmd, void *dummy, const char *path)
 	
 	return NULL;
 }	
-	
-		
 
+static const char *add_cachedir_levels(cmd_parms *cmd, void *dummy, 
+	const char *level)
+{
+	server_rec *s = cmd->server;
+	wodan2_config_t *config = (wodan2_config_t *)
+		ap_get_module_config(s->module_config, &wodan2_module);
+	apr_int64_t levels;
+
+	if (!util_string_is_number(level)) {
+		char *error_message = apr_psprintf(cmd->pool, 
+			"Argument to WodanCacheDirLevels should be a number, it is %s now",
+			level);
+		return error_message;
+	}
+	
+	levels = apr_strtoi64(level, NULL, 10);
+	if (levels < 0 || levels > (apr_int64_t) MAX_CACHEDIR_LEVELS) {
+		char *error_message = apr_psprintf(cmd->pool, 
+			"WodanCacheDirLevels must have a value between 0 and %d",
+			(int) MAX_CACHEDIR_LEVELS);
+		return error_message;
+	}
+	
+	config->cachedir_levels = (int) levels;
+	return NULL;
+}	
+
+static const char *add_default_cachetime(cmd_parms *cmd, void *dummy,
+	const char *path, const char *time_string)
+{
+	server_rec *s = cmd->server;
+	wodan2_config_t *config = (wodan2_config_t *)
+		ap_get_module_config(s->module_config, &wodan2_module);
+	wodan2_default_cachetime_t *new_default_cachetime;
+	
+	if(path[0] != '/' || path[(int) strlen(path) - 1] != '/')
+		return "First argument of WodanDefaultCacheTime "
+	    		"should be a path, e.g. /dir/";
+	 
+	new_default_cachetime = apr_array_push(config->default_cachetimes);
+	new_default_cachetime->path = path;
+	if (strncmp(time_string, "no", 2 ) == 0 )
+		new_default_cachetime->cachetime = (apr_int32_t) -1;
+	else { 
+	 	new_default_cachetime->cachetime = 
+	 		util_timestring_to_seconds(apr_pstrdup(cmd->pool, time_string));
+	}
+	return NULL;
+}
+
+static const char* add_default_cachetime_regex(cmd_parms *cmd, 
+	void *dummy, const char *regex_pattern, const char *time_string)
+{
+	server_rec *s = cmd->server;
+	wodan2_config_t *config = (wodan2_config_t *)
+		ap_get_module_config(s->module_config, &wodan2_module);
+	wodan2_default_cachetime_regex_t *new_default_cachetime_regex;
+	regex_t *compiled_pattern = NULL;
+
+	new_default_cachetime_regex = 
+		apr_array_push(config->default_cachetimes_regex);
+	
+	compiled_pattern = ap_pregcomp(cmd->pool, regex_pattern, 
+		REG_EXTENDED | REG_NOSUB);
+	if (compiled_pattern == NULL) {
+		char *error_message = apr_psprintf(cmd->pool, 
+			"Failure compiling regex pattern \"%s\"", regex_pattern);
+		return error_message;
+	}	
+	new_default_cachetime_regex->uri_pattern = compiled_pattern;
+	
+	if (strncmp(time_string, "no", 2) == 0)
+		new_default_cachetime_regex->cachetime = (apr_int32_t) -1;
+	else
+		new_default_cachetime_regex->cachetime = 
+			util_timestring_to_seconds(apr_pstrdup(cmd->pool, time_string));
+
+	return NULL;
+}
+
+static const char* add_default_cachetime_header(cmd_parms *cmd, void *dummy,
+					       const char *http_header,
+					       const char *regex_pattern,
+					       const char *time_string)
+{
+	server_rec *s = cmd->server;
+	wodan2_config_t *config = (wodan2_config_t *)
+		ap_get_module_config(s->module_config, &wodan2_module);
+	wodan2_default_cachetime_header_t *new_default_cachetime_header;
+	regex_t *compiled_pattern;
+	
+	new_default_cachetime_header = 
+		apr_array_push(config->default_cachetimes_header);
+	
+	new_default_cachetime_header->header = apr_pstrdup(cmd->pool, http_header);
+	compiled_pattern = ap_pregcomp(cmd->pool, regex_pattern, 
+		REG_EXTENDED | REG_NOSUB);
+	if (compiled_pattern == NULL) {
+		char *error_message = apr_psprintf(cmd->pool, 
+			"Failure compiling regex pattern \"%s\"", regex_pattern);
+		return error_message;
+	}
+	new_default_cachetime_header->header_value_pattern = compiled_pattern;
+	if (strncmp(time_string, "no", 2) == 0) 
+		new_default_cachetime_header->cachetime = (apr_int32_t) -1;
+	else
+		new_default_cachetime_header->cachetime = 
+			util_timestring_to_seconds(apr_pstrdup(cmd->pool, time_string));
+			
+	return NULL;
+}
+
+static const char* add_run_on_cache(cmd_parms *cmd, void *dummy,
+				  int flag)
+{
+	wodan2_config_t *config = (wodan2_config_t *)
+		ap_get_module_config(cmd->server->module_config, &wodan2_module);
+      
+	config->run_on_cache = (unsigned) flag;
+	
+	return NULL;
+}
+
+static const char *add_cache_404s(cmd_parms *cmd, void *dummy, int flag)
+{
+	wodan2_config_t *config = (wodan2_config_t *)
+		ap_get_module_config(cmd->server->module_config, &wodan2_module);
+	
+	config->cache_404s = (unsigned) flag;
+	
+	return NULL;
+}
+
+static const char *add_backend_timeout(cmd_parms *cmd, void *dummy,
+	const char *timeout_string)
+{
+	wodan2_config_t *config = (wodan2_config_t *)
+		ap_get_module_config(cmd->server->module_config, &wodan2_module);
+	apr_int64_t timeout;
+	
+	if (!util_string_is_number(timeout_string)) {
+		char *error_message = apr_psprintf(cmd->pool,
+			"argument should be number, it is \"%s\" now", timeout_string);
+		return error_message;
+	}
+	timeout = apr_strtoi64(timeout_string, NULL, 10);		
+	
+	config->backend_timeout.tv_sec = (int) timeout / 1000;
+	config->backend_timeout.tv_usec = ((int) timeout % 1000);
+	if (config->backend_timeout.tv_sec > MAX_BACKEND_TIMEOUT_SEC)
+		config->backend_timeout.tv_sec = MAX_BACKEND_TIMEOUT_SEC;
+
+	return NULL;
+}
 static int wodan2_handler(request_rec *r)
 {
     if (strcmp(r->handler, "wodan2")) {
@@ -188,8 +425,15 @@ static int wodan2_handler(request_rec *r)
     }
     r->content_type = "text/html";      
 
-    if (!r->header_only)
-        ap_rputs("The sample page from mod_wodan2.c\n", r);
+    if (!r->header_only) {
+    		void *sconf;
+    		wodan2_config_t *config;
+    		sconf = r->server->module_config;
+    		config = (wodan2_config_t *) 
+    			ap_get_module_config(sconf, &wodan2_module);
+     	char *page = apr_psprintf(r->pool, "run on cache = %d\n", config->run_on_cache);
+		ap_rputs(page, r);
+    }
     return OK;
 }
 
@@ -199,23 +443,6 @@ static void wodan2_register_hooks(apr_pool_t *p)
     ap_hook_handler(wodan2_handler, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
-static const command_rec wodan2_commands[] = 
-{
-	AP_INIT_TAKE12("WodanPass", add_pass, NULL, RSRC_CONF, "A path and a URL"),
-	AP_INIT_TAKE12("WodanPassReverse", add_pass_reverse, 
-		NULL, RSRC_CONF, "A path and a URL"),
-	AP_INIT_TAKE1("WodanCacheDir", add_cachedir, NULL, RSRC_CONF, "A path"),
-	{NULL}
-};
 
-/* Dispatch list for API hooks */
-module AP_MODULE_DECLARE_DATA wodan2_module = {
-    STANDARD20_MODULE_STUFF, 
-    wodan2_create_dir_config,   /* create per-dir    config structures */
-	wodan2_merge_config,                  /* merge  per-dir    config structures */
-    wodan2_create_server_config,/* create per-server config structures */
-    wodan2_merge_config,                  /* merge  per-server config structures */
-    wodan2_commands,                  /* table of config file commands       */
-    wodan2_register_hooks  /* register hooks                      */
-};
+
 
