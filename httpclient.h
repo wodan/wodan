@@ -21,7 +21,6 @@
  * @param host The ReverseProxyPass url
  * @param httpresponse The httpresponse structure to put the data in
  * @param r The request record
- * @param backend_timeout timeout for the backend
  * @param cache_file_time creation time of cache file (or (time_t) 0 if there's
  * 		no cache file.
  * @return The result code returned by the backend
@@ -29,7 +28,7 @@
  */
 int http_proxy (wodan2_config_t *config, const char* host, char* uri, 
 	struct httpresponse* httpresponse, request_rec *r, 
-	struct timeval backend_timeout, apr_time_t cache_file_time);
+	apr_time_t cache_file_time);
 
 
 #endif

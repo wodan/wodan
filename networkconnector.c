@@ -11,9 +11,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-network_connection_t* networkconnect (char* host, int port, 
-					  request_rec *r, int do_ssl WODAN_UNUSED_PARAMETER)
-
+network_connection_t* networkconnect (wodan2_config_t *config, char* host, int port, 
+		request_rec *r, int do_ssl WODAN_UNUSED_PARAMETER)
 {
 	network_connection_t* network_connection;
 	apr_socket_t *socket;
@@ -35,6 +34,11 @@ network_connection_t* networkconnect (char* host, int port,
 		ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, 
 			"Error creating socket");
 		return NULL;
+	}
+	if (config->backend_timeout > 0) {
+		apr_socket_timeout_set(socket, config->backend_timeout);
+		ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
+			"socket timeout ste to %llu", config->backend_timeout);
 	}
 	if (apr_socket_connect(socket, server_address) != APR_SUCCESS) {
 		ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, 
@@ -65,9 +69,15 @@ int connection_write_bytes(network_connection_t *connection,
 	const char *buffer, int buffersize) 
 {
 	apr_size_t nr_bytes = (apr_size_t) buffersize;
+	apr_status_t socket_status;
 
-	apr_socket_send(connection->socket, buffer, &nr_bytes);
-     if (nr_bytes < ((apr_size_t) buffersize)) { 
+	socket_status = apr_socket_send(connection->socket, buffer, &nr_bytes);
+	if (socket_status == APR_TIMEUP) {
+		ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_DEBUG, 0, r->server,
+			"write to backend timed out");
+		return -1;
+	}
+    if (nr_bytes < ((apr_size_t) buffersize)) { 
      	ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
      		"%s:%s: error writing bytes to backend.",
      		__FILE__, __func__); 
@@ -80,40 +90,33 @@ int connection_write_bytes(network_connection_t *connection,
 int connection_read_bytes(network_connection_t *connection,
 	const request_rec *r, char *buffer, int buffersize) 
 {
-     apr_size_t nr_bytes = (apr_size_t) buffersize;
-     apr_status_t err;
+    apr_size_t nr_bytes = (apr_size_t) buffersize;
+    apr_status_t socket_status;
      
-     err = apr_socket_recv(connection->socket, buffer, &nr_bytes);
-
-	if ((nr_bytes != ((apr_size_t) buffersize)) && !(err == APR_SUCCESS ||
-		err == APR_EOF)) {
-	 	ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-	 	"%s,%s: error reading bytes from backend, read %lu bytes, buffersize = %d, err = %d",
-	 	__FILE__, __func__, nr_bytes, buffersize, err);
-	  	return -1;
+    socket_status = apr_socket_recv(connection->socket, buffer, &nr_bytes);
+	
+	if (socket_status != APR_SUCCESS) {
+		if (socket_status == APR_TIMEUP) {
+			ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_DEBUG, 0, r->server,
+				"read from backend timed out");
+			return -1;
+		}
+		if ((nr_bytes != (apr_size_t) buffersize) && socket_status != APR_EOF) {
+			ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
+	 			"error reading bytes from backend, read %lu bytes, "
+	 			"buffersize = %d, err = %d", nr_bytes, buffersize, socket_status);
+	  		return -1;
+		}
 	 }
-	 if (err == APR_EOF || nr_bytes < (apr_size_t) buffersize) {
-     	ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0,
-     		r->server, "got EOF reading bytes from backend");
-	  	return (int) nr_bytes;
-     }
-     
      return (int) nr_bytes;
 }
 	  
 int connection_write_string(network_connection_t *connection,
 	const request_rec *r, const char *the_string)
 {
-	apr_size_t len = (apr_size_t) strlen(the_string);
+	int len = (int) strlen(the_string);
 	
-	if (apr_socket_send(connection->socket, the_string, &len) != APR_SUCCESS) {
-	 	ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-     		"%s,%s: Error writing string to backend",
-     		__FILE__, __func__);
-     	return -1;
-     } else {
-		return 0;
-     }
+	return connection_write_bytes(connection, r, the_string, len);
 }
 
 char *connection_read_string(network_connection_t *connection,
@@ -125,19 +128,29 @@ char *connection_read_string(network_connection_t *connection,
 	int end_of_line = 0;
 	
 	while(index < BUFFERSIZE && !end_of_line) {
-		apr_status_t status;
-		status = apr_socket_recv(connection->socket, &(buffer[index]), 
+		apr_status_t socket_status;
+		socket_status = apr_socket_recv(connection->socket, &(buffer[index]), 
 			&byte_read);
-		if (status == APR_EOF || buffer[index] == '\n')
+		if (socket_status == APR_TIMEUP) {
+			apr_interval_time_t timeout;
+			apr_socket_timeout_get(connection->socket, &timeout);
+			ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_DEBUG, 0, r->server,
+				"read from backend connection timed out, timeout = %lld", timeout);
+				
+			return NULL;
+		}
+		if (socket_status == APR_EOF || buffer[index] == '\n')
 			end_of_line = 1;
 		index += 1;
 		
 	 	if (byte_read != 1) {
 	     	ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-    		 	"%s,%s: Error reading string from backend", 
-     		__FILE__, __func__);
+    		 		"%s,%s: Error reading string from backend", 
+     			__FILE__, __func__);
+     		return NULL;
 	 	}
      }
+     
      return buffer;
 }
 

@@ -28,7 +28,6 @@
 #include "apr_tables.h"
 #include "apr_time.h"
 #include "apr_strmatch.h"
-#include <sys/time.h>
 
 /**
  * Structure that contains the config elements of wodan
@@ -42,7 +41,7 @@ typedef struct wodan2_config {
 				  is useful if there is scheduled downtime on
 				  the backend */
 	unsigned cache_404s; /* Cache 404s as well or not? */
-	struct timeval backend_timeout; /* timeout for the backend 
+	apr_interval_time_t backend_timeout; /* timeout for the backend 
 					 connection. If a connection has not 
 					 been made within this time, the 
 					 backend is assumed to be down */

@@ -181,12 +181,11 @@ static void *wodan2_merge_config(apr_pool_t *p, void *base_config_p,
 		config->run_on_cache = 1;
 	if (new_config->cache_404s == 1 || base_config->cache_404s == 1)
 		config->cache_404s = 1;
-	if (new_config->backend_timeout.tv_sec != 0 ||
-	    new_config->backend_timeout.tv_usec != 0)
+	if (new_config->backend_timeout != (apr_interval_time_t) 0)
 		config->backend_timeout = new_config->backend_timeout;
 	else
 		config->backend_timeout = base_config->backend_timeout;
-	
+		
 	config->proxy_passes = apr_array_append(p, 
 		base_config->proxy_passes, new_config->proxy_passes);
 	config->proxy_passes_reverse = apr_array_append(p,
@@ -425,13 +424,16 @@ static const char *add_backend_timeout(cmd_parms *cmd,
 			"argument should be number, it is \"%s\" now", timeout_string);
 		return error_message;
 	}
-	timeout = apr_strtoi64(timeout_string, NULL, 10);		
+	timeout = apr_strtoi64(timeout_string, NULL, 10);
 	
-	config->backend_timeout.tv_sec = (int) timeout / 1000;
-	config->backend_timeout.tv_usec = ((int) timeout % 1000);
-	if (config->backend_timeout.tv_sec > MAX_BACKEND_TIMEOUT_SEC)
-		config->backend_timeout.tv_sec = MAX_BACKEND_TIMEOUT_SEC;
-
+	// timeout is a number in miliseconds, so it needs to be multiplied by 1000
+	timeout *= 1000;
+	
+	if (timeout > apr_time_from_sec(MAX_BACKEND_TIMEOUT_SEC))
+		config->backend_timeout = apr_time_from_sec(MAX_BACKEND_TIMEOUT_SEC);
+	else
+		config->backend_timeout = timeout;
+	
 	return NULL;
 }
 
@@ -488,8 +490,7 @@ static int wodan2_handler(request_rec *r)
 			
 			//Get the httpresponse from remote server	
 			response = http_proxy(config, proxy_destination->url, newpath, 
-					      &httpresponse, r, 
-					      config->backend_timeout, cache_file_time);
+					      &httpresponse, r, cache_file_time);
 			/* If 404 are to be cached, then already return
 			 * default 404 page here in case of a 404. */
 			if (config->cache_404s)
@@ -501,9 +502,11 @@ static int wodan2_handler(request_rec *r)
 			   left... */
 			if ((response == HTTP_BAD_GATEWAY ||
 			     response == HTTP_GATEWAY_TIME_OUT) &&
-			    cache_status != WODAN_CACHE_PRESENT_EXPIRED)
-				return HTTP_NOT_FOUND;
-			else if (response != HTTP_BAD_GATEWAY &&
+			    cache_status != WODAN_CACHE_PRESENT_EXPIRED) {
+			    	ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, r->server,
+			    		"return HTTP_NOT_FOUND");
+			    	return HTTP_NOT_FOUND;
+			} else if (response != HTTP_BAD_GATEWAY &&
 				 response != HTTP_GATEWAY_TIME_OUT &&
 				 response != HTTP_NOT_MODIFIED) {
 				ap_log_error(APLOG_MARK, 
