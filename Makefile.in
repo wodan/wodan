@@ -13,21 +13,28 @@ include $(apache_dir)/build/special.mk
 APXS=$(apache_dir)/bin/apxs
 APACHECTL=$(apache_dir)/bin/apachectl
 
+SOURCE_FILES=mod_wodan2.c util.c
+INCLUDE_FILES=util.h
+
 #   additional defines, includes and libraries
 #DEFS=-Dmy_define=my_value
-DEFS=@DEFS@
+DEFS=@DEFS@ -Wall -Werror
 INCLUDES=-I$(apache_dir)/include
 #LIBS=-Lmy/lib/dir -lmylib
 
 #   the default target
-all: local-shared-build
+all: mod_wodan.so
 
-#   install the shared object file into Apache 
-install: install-modules
+mod_wodan.so: $(SOURCE_FILES) $(INCLUDE_FILES)
+	$(APXS) -c $(DEFS) $(INCLUDES) $(LIBS) $(SOURCE_FILES)
+	
+#install the shared object file into Apache 
+install: all
+	$(APXS) -i -a -n 'wodan2' mod_wodan2.la
 
-#   cleanup
+# cleanup
 clean:
-	-rm -f mod_wodan2.o mod_wodan2.lo mod_wodan2.slo mod_wodan2.la 
+	-rm -f *o *lo *slo *la mod_wodan.so 
 
 #   simple test
 test: reload
