@@ -18,7 +18,7 @@ INCLUDE_FILES=util.h
 
 #   additional defines, includes and libraries
 #DEFS=-Dmy_define=my_value
-DEFS=@DEFS@ -Wall -Werror
+DEFS=-Wall -Werror
 INCLUDES=-I$(apache_dir)/include
 #LIBS=-Lmy/lib/dir -lmylib
 
