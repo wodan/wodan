@@ -62,7 +62,7 @@ typedef struct wodan2_proxy_destination {
 } wodan2_proxy_destination_t;
 
 /**
- * Structure containting info about a ReverseProxyPassReverse directive
+ * Structure containing info about a ReverseProxyPassReverse directive
  */
 typedef struct wodan2_proxy_alias {
 	const char *path;
@@ -70,7 +70,7 @@ typedef struct wodan2_proxy_alias {
 } wodan2_proxy_alias_t;
 
 /**
- * Structure containting info about a DefaultCacheTime directive
+ * Structure containing info about a DefaultCacheTime directive
  */
 typedef struct wodan2_default_cachetime {
 	const char *path;	
@@ -78,7 +78,7 @@ typedef struct wodan2_default_cachetime {
 } wodan2_default_cachetime_t;
 
 /**
- * Structure containting info for the DefaultCacheTimeRegex directive
+ * Structure containing info for the DefaultCacheTimeRegex directive
  */
 typedef struct wodan2_default_cachetime_regex {
 	regex_t *uri_pattern;

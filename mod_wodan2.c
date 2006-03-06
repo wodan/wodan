@@ -107,11 +107,11 @@ static const command_rec wodan2_commands[] =
 module AP_MODULE_DECLARE_DATA wodan2_module = {
     STANDARD20_MODULE_STUFF, 
     wodan2_create_dir_config,   /* create per-dir    config structures */
-	wodan2_merge_config,                  /* merge  per-dir    config structures */
+    wodan2_merge_config,        /* merge  per-dir    config structures */
     wodan2_create_server_config,/* create per-server config structures */
-    wodan2_merge_config,                  /* merge  per-server config structures */
-    wodan2_commands,                  /* table of config file commands       */
-    wodan2_register_hooks  /* register hooks                      */
+    wodan2_merge_config,        /* merge  per-server config structures */
+    wodan2_commands,            /* table of config file commands       */
+    wodan2_register_hooks       /* register hooks                      */
 };
 
 /* initialize Wodan2 */
@@ -440,7 +440,7 @@ static const char *add_backend_timeout(cmd_parms *cmd,
 static void wodan2_register_hooks(apr_pool_t *p WODAN_UNUSED_PARAMETER)
 {
 	ap_hook_post_config(wodan2_init_handler, NULL, NULL, APR_HOOK_MIDDLE);
-    ap_hook_handler(wodan2_handler, NULL, NULL, APR_HOOK_MIDDLE);
+	ap_hook_handler(wodan2_handler, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
 static int wodan2_handler(request_rec *r)
