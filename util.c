@@ -4,10 +4,6 @@
  * Implements different utility functions that are used by Wodan2
  */
  
-#ifndef APR_HAS_USER
-#define APR_HAS_USER
-#endif
-
 #include "datatypes.h"
 #include "match.h"
 #include "util.h"
@@ -25,6 +21,10 @@
 #include "apr_tables.h"
 #include "apr_time.h"
 #include "apr_user.h"
+
+#ifndef APR_HAS_USER
+#define APR_HAS_USER
+#endif
 
 #define SECONDS_IN_MINUTE 60
 #define SECONDS_IN_HOUR (60 * SECONDS_IN_MINUTE)

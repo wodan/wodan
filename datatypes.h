@@ -28,6 +28,22 @@
 #include "apr_tables.h"
 #include "apr_time.h"
 #include "apr_strmatch.h"
+#include "apr_version.h"
+
+/* detect if APR > 1.0 is used */
+#if APR_MAJOR_VERSION < 1
+#define ap_regex_t        regex_t
+#define ap_regmatch_t     regmatch_t
+#define ap_regcomp(a,b,c) regcomp((a),(b),(c))
+#define ap_regfree(a)     regfree(a)
+#define AP_REG_ICASE      REG_ICASE
+#define AP_REG_NEWLINE    REG_NEWLINE
+#define AP_REG_NOTBOL     REG_NOTBOL
+#define AP_REG_NOTEOL     REG_NOTEOL
+#define AP_REG_EXTENDED   REG_EXTENDED
+#define AP_REG_NOSUB      REG_NOSUB
+#define apr_socket_create(a,b,c,d,e) apr_socket_create(a,b,c,e)
+#endif
 
 /**
  * Structure that contains the config elements of wodan
@@ -81,7 +97,7 @@ typedef struct wodan2_default_cachetime {
  * Structure containing info for the DefaultCacheTimeRegex directive
  */
 typedef struct wodan2_default_cachetime_regex {
-	regex_t *uri_pattern;
+	ap_regex_t *uri_pattern;
 	apr_int32_t cachetime;
 } wodan2_default_cachetime_regex_t;
 
@@ -90,7 +106,7 @@ typedef struct wodan2_default_cachetime_regex {
  */
 typedef struct wodan2_default_cachetime_header {
 	const char *header;
-	regex_t *header_value_pattern;
+	ap_regex_t *header_value_pattern;
 	apr_int32_t cachetime;
 } wodan2_default_cachetime_header_t;
 

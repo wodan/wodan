@@ -79,4 +79,3 @@ void cache_close_cachefile(wodan2_config_t *config, request_rec *r,
  */
 int cache_update_expiry_time(wodan2_config_t *config, request_rec *r);
 #endif
-	

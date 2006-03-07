@@ -257,22 +257,25 @@ static const char *add_cachedir(cmd_parms *cmd, void *dummy WODAN_UNUSED_PARAMET
 	wodan2_config_t *config = (wodan2_config_t *)
 		ap_get_module_config(s->module_config, &wodan2_module);
 	
-	if (!ap_is_directory(cmd->pool, path)) {
+	/* prepend server root path */
+	const char *fname = ap_server_root_relative(cmd->pool, path);
+	
+	if (!ap_is_directory(cmd->pool, fname)) {
 		char *error_message = apr_psprintf(cmd->pool, 
-			"WodanCacheDir %s is not a directory!", path);
+			"WodanCacheDir %s is not a directory!", fname);
 		return error_message;
 	}
 	
-	if (!util_file_is_writable(cmd->pool, path))
+	if (!util_file_is_writable(cmd->pool, fname))
 	{
 		
 		char *error_message = apr_psprintf(cmd->pool,
 			"WodanCachedir %s should be owned by Wodan user and should be writable!"
-			"by that user!", path);
+			"by that user!", fname);
 		return error_message;
 	}
 	
-	apr_cpystrn(config->cachedir, path, MAX_CACHE_PATH_SIZE + 1);
+	apr_cpystrn(config->cachedir, fname, MAX_CACHE_PATH_SIZE + 1);
 	config->is_cachedir_set = 1;
 	
 	return NULL;
@@ -336,13 +339,13 @@ static const char* add_default_cachetime_regex(cmd_parms *cmd,
 	wodan2_config_t *config = (wodan2_config_t *)
 		ap_get_module_config(s->module_config, &wodan2_module);
 	wodan2_default_cachetime_regex_t *new_default_cachetime_regex;
-	regex_t *compiled_pattern = NULL;
+	ap_regex_t *compiled_pattern = NULL;
 
 	new_default_cachetime_regex = 
 		apr_array_push(config->default_cachetimes_regex);
 	
 	compiled_pattern = ap_pregcomp(cmd->pool, regex_pattern, 
-		REG_EXTENDED | REG_NOSUB);
+		AP_REG_EXTENDED | AP_REG_NOSUB);
 	if (compiled_pattern == NULL) {
 		char *error_message = apr_psprintf(cmd->pool, 
 			"Failure compiling regex pattern \"%s\"", regex_pattern);
@@ -367,14 +370,14 @@ static const char* add_default_cachetime_header(cmd_parms *cmd,
 	wodan2_config_t *config = (wodan2_config_t *)
 		ap_get_module_config(s->module_config, &wodan2_module);
 	wodan2_default_cachetime_header_t *new_default_cachetime_header;
-	regex_t *compiled_pattern;
+	ap_regex_t *compiled_pattern;
 	
 	new_default_cachetime_header = 
 		apr_array_push(config->default_cachetimes_header);
 	
 	new_default_cachetime_header->header = apr_pstrdup(cmd->pool, http_header);
 	compiled_pattern = ap_pregcomp(cmd->pool, regex_pattern, 
-		REG_EXTENDED | REG_NOSUB);
+		AP_REG_EXTENDED | AP_REG_NOSUB);
 	if (compiled_pattern == NULL) {
 		char *error_message = apr_psprintf(cmd->pool, 
 			"Failure compiling regex pattern \"%s\"", regex_pattern);

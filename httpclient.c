@@ -520,20 +520,18 @@ static int receive_body(wodan2_config_t *config, network_connection_t *connectio
 	backend_read_error = 0;
 	client_write_error = 0;
 	cache_write_error = 0;
-	while(1) {
-		nr_bytes_read = connection_read_bytes(connection, r,
-						      buffer,
-						      BUFFERSIZE);
+
+	while(1)
+	{
+		nr_bytes_read = connection_read_bytes(connection, r, buffer, BUFFERSIZE);
 		//nr_bytes_read = fread(buffer, sizeof(char), BUFFERSIZE, 
 		//		      connection->readstream);
 		ap_log_error(APLOG_MARK, APLOG_DEBUG|APLOG_NOERRNO, 0,
 			     r->server, "read %d bytes from backend",
 			     nr_bytes_read);
-		if (nr_bytes_read == -1) {
-			backend_read_error = 1;
-			break;
-		}
 		
+		if (nr_bytes_read == -1) backend_read_error = 1;
+
 		/* write to cache and check for errors */
 		if (cache_file) {
 			apr_size_t cache_bytes_written;
@@ -559,9 +557,10 @@ static int receive_body(wodan2_config_t *config, network_connection_t *connectio
 			
 		/* last escape hatch */
 		if (nr_bytes_read == 0)
+		if (nr_bytes_read == 0)
 			break;
 	}
-
+	
 	/* handle the possible errors */
 	if (client_write_error) {
 		/* add a more explicit error message to the error_log

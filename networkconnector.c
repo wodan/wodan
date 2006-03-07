@@ -19,7 +19,7 @@ network_connection_t* networkconnect (wodan2_config_t *config, char* host, int p
 	apr_sockaddr_t *server_address;
 	
 	// TODO check if we need to allocate room for the socket
-//	socket = apr_pcalloc(r->pool, sizeof(apr_socket_t));
+	//	socket = apr_pcalloc(r->pool, sizeof(apr_socket_t));
 	ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0,r->server,
 		"Looking up host %s", host);
 	if (apr_sockaddr_info_get(&server_address, host, APR_UNSPEC, port, 0, r->pool) !=
@@ -29,16 +29,17 @@ network_connection_t* networkconnect (wodan2_config_t *config, char* host, int p
 		return NULL;
 	}
 	
-	if (apr_socket_create(&socket, APR_INET, SOCK_STREAM, r->pool) !=
+	if (apr_socket_create(&socket, APR_INET, SOCK_STREAM, APR_PROTO_TCP,  r->pool) !=
 		APR_SUCCESS) {
 		ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, 
 			"Error creating socket");
 		return NULL;
 	}
+
 	if (config->backend_timeout > 0) {
 		apr_socket_timeout_set(socket, config->backend_timeout);
 		ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-			"socket timeout ste to %llu", config->backend_timeout);
+			"socket timeout set to %llu", config->backend_timeout);
 	}
 	if (apr_socket_connect(socket, server_address) != APR_SUCCESS) {
 		ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, 
