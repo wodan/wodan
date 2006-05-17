@@ -380,7 +380,7 @@ static char *get_expire_time(wodan2_config_t *config,
 				ap_log_error(APLOG_MARK, 
 					     APLOG_NOERRNO|APLOG_DEBUG, 0,
 					     r->server, 
-					     "DefaultCacheTime in httpd.conf "
+					     "WodanDefaultCacheTime in httpd.conf "
 					     "is 'no-cache'. Not caching..." );
 				return NULL;
 			}
