@@ -496,7 +496,7 @@ static int receive_headers(network_connection_t *connection, request_rec *r,
         }
 
 		key = ap_getword(r->pool, header ? &header: &read_header, ':');
-		val = ap_pstrdup(r->pool, header ? header : read_header);
+		val = apr_pstrdup(r->pool, header ? header : read_header);
 		val = util_skipspaces(val);
 		
 		// strip whitespace from start and end.
@@ -575,6 +575,7 @@ static int receive_body(wodan2_config_t *config, network_connection_t *connectio
 		}
 			
 		/* last escape hatch */
+		if (nr_bytes_read == 0)
 		if (nr_bytes_read == 0)
 		if (nr_bytes_read == 0)
 			break;
