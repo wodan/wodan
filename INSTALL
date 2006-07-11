@@ -1,0 +1,67 @@
+---------------
+Installation
+---------------
+
+I. First, you will need the necessary files:
+
+    1. The apache 2.x webserver source
+    2. The Wodan source
+
+II. Unpack Apache and Wodan sources somewhere (e.g. /usr/local/src):
+    1. Apache
+    
+        $ tar zxvf apache-2.x.tar.gz    
+    
+    2. Wodan
+    
+        $ tar zxvf wodan-2.x.tar.gz
+    
+III. Build Apache
+
+    Build Apache with mod_so enabled. This enables Apache to load dynamic
+    modules. The configure line below will enable mod_so, and configure
+    Apache to be installed in /usr/local/apache_wodan
+
+    $ cd <source_of_apache>
+    $ ./configure --prefix=/usr/local/apache_wodan --enable-module=so
+    $ make
+
+    Of course, if you don't like the installation location, you are encouraged
+    to change it.
+
+IV. Installing apache
+
+    $ su
+    # make install
+
+V.  Build Wodan
+
+    Wodan is built using Apache's apxs tool and autoconf. First, you have to
+    run the configure script to create a Makefile. You have to supply the
+    directory that Apache was installed in to the configure script. You can also
+    enable the use of SSL (HTTPS) backends using the 'enable-ssl-backend' option.
+
+    $ ./configure --with-apache=/usr/local/apache_wodan
+
+    will configure the use of the Apache installation in /usr/local/apache_wodan.
+    If there's no Apache installation in that directory, an error message will
+    be displayed.
+
+    $ ./configure --with-apache=/usr/local/apache_wodan --enable-ssl-backend
+
+    will do the same as above, but will enable the reverse proxying of
+    SSL enabled backends. An installation of SSL (OpenSSL) will be searched
+    and used if found. If no SSL installation is found, an error message is
+    displayed.
+
+    After running the configure script, run
+
+    $ make
+
+    if this is succesful, run
+
+    $ make install
+
+    This will also take care of loading the mod_wodan.so module in httpd.conf.
+    Apache with Wodan is now ready to be configured and run!
+
