@@ -464,12 +464,14 @@ static int receive_headers(network_connection_t *connection, request_rec *r,
 		    struct httpresponse *httpresponse)
 {
 	const char *read_header;
+	char *header; // only used as a workaround for when read_header is
+	// not big enough to store the incoming header, for
+	// example with large Set-Cookie headers
 	char *key, *val;
-	int val_pos;
+	int val_pos, len;
 	
-	while(1) {
-		read_header = connection_read_string(connection, r);
-		
+	header = 0;
+	while((read_header = connection_read_string(connection, r))) {
 		/* if read_header is NULL, this signals an error. Escape from here right
 		 * away in that case */
 		if (read_header == NULL)
@@ -478,8 +480,23 @@ static int receive_headers(network_connection_t *connection, request_rec *r,
 		if (strcasecmp(read_header, CRLF) == 0)
 			break;
 		
-		key = ap_getword(r->pool, &read_header, ':');
-		val = apr_pstrdup(r->pool, read_header);
+		len = 0;
+		if(strlen(read_header) == BUFFERSIZE - 1)
+		{
+			if(header) len = strlen(header);
+			header = (char *) realloc(header, (len + BUFFERSIZE));
+			header = strncat(header, read_header, BUFFERSIZE);
+			continue;
+		}
+
+		if(header) { // we append the final bytes of header here
+            len = strlen(header);
+            header = (char *) realloc(header, (len + BUFFERSIZE));
+            header = strcat(header, read_header);
+        }
+
+		key = ap_getword(r->pool, header ? &header: &read_header, ':');
+		val = ap_pstrdup(r->pool, header ? header : read_header);
 		val = util_skipspaces(val);
 		
 		// strip whitespace from start and end.
@@ -492,6 +509,8 @@ static int receive_headers(network_connection_t *connection, request_rec *r,
 			val_pos++;
 		}
 		apr_table_add(httpresponse->headers, key, val);
+		free(header);
+		header = 0;
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, r->server,
 			     "Added header: \"%s\", value: \"%s\"", 
 			     key, val);
