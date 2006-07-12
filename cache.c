@@ -560,26 +560,29 @@ int cache_update_expiry_time(wodan2_config_t *config, request_rec *r)
 {
 	char *cachefilename;
 	int expire_interval;
-	char *expire_time_string;
+	int expire_time;
+	char *expire_time_string = NULL;
 	apr_file_t *cachefile;
 	char buffer[BUFFERSIZE];
 	apr_size_t bytes_written;
 
 	get_cache_filename(config, r, r->unparsed_uri, &cachefilename);
-	(void) get_expire_time(config, r, NULL, &expire_interval);
+	// JvH: does this make any sense at all? expire_interval gets overwritten anyway
+	// (void) get_expire_time(config, r, NULL, &expire_interval);
        
-    if (apr_file_open(&cachefile, cachefilename, APR_WRITE, APR_OS_DEFAULT,
+    if (apr_file_open(&cachefile, cachefilename, APR_READ|APR_WRITE, APR_OS_DEFAULT,
     		r->pool) != APR_SUCCESS) 
     		return -1;   
 	
 	/* skip URL field */
 	apr_file_gets(buffer, BUFFERSIZE, cachefile);
+
 	apr_file_gets(buffer, BUFFERSIZE, cachefile);
 	/* calculate new expire_time */
 	expire_interval = (int) strtol(buffer, NULL, 10);
-	expire_time_string = ap_ht_time(r->pool, 
-					(r->request_time + apr_time_from_sec(expire_interval)), 
-					"%a %d %b %Y %T %Z",1);
+	expire_time = r->request_time + apr_time_from_sec(expire_interval);
+	expire_time_string = apr_pcalloc(r->pool, APR_RFC822_DATE_LEN);
+	apr_rfc822_date(expire_time_string, expire_time);
 	/* write new expire time field in cachefile */
 	apr_file_write_full(cachefile, expire_time_string, strlen(expire_time_string),
 		&bytes_written);
