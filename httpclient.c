@@ -250,11 +250,11 @@ static apr_status_t get_destination_parts(apr_pool_t *p,
 }
 
 static int send_complete_request(network_connection_t *connection, request_rec *r, 
-		const char *dest_host, const char *dest_path, apr_table_t *out_headers,
+		const char *dest_host_and_port, const char *dest_path, apr_table_t *out_headers,
 		apr_time_t modified_time) {
 	int result;
 
-	if(send_request(connection, r, dest_host, dest_path, modified_time) < 0)
+	if(send_request(connection, r, dest_host_and_port, dest_path, modified_time) < 0)
 		return -1;
 	add_x_headers(r, out_headers);
 	apr_table_set(out_headers, "Connection", "close");
@@ -271,7 +271,7 @@ static int send_complete_request(network_connection_t *connection, request_rec *
 }
 
 static int send_request(network_connection_t *connection, request_rec *r,
-		const char *dest_host, const char *dest_path, apr_time_t modified_time) {
+		const char *dest_host_and_port, const char *dest_path, apr_time_t modified_time) {
 	const char *request_string;
 	const char *host_header_string;
 	
@@ -280,7 +280,7 @@ static int send_request(network_connection_t *connection, request_rec *r,
 	if (connection_write_string(connection, r, request_string) == -1)
 		return -1;
 	host_header_string = apr_psprintf(r->pool, "Host: %s%s",
-					 dest_host, CRLF);
+					 dest_host_and_port, CRLF);
 	if (connection_write_string(connection, r, 
 				    host_header_string) == -1)
 		return -1;
@@ -682,7 +682,7 @@ static int do_http_proxy (wodan2_config_t *config, const char* proxyurl, char* u
 	ap_reverseproxy_clear_connection(p, out_headers);
 	
 	/* send request */
-	if (send_complete_request(connection, r, desthost, destpath,
+	if (send_complete_request(connection, r, dest_host_and_port, destpath,
 				  out_headers, cache_file_time) == -1) {
 		connection_close_connection(connection, r);
 		return HTTP_BAD_GATEWAY;
