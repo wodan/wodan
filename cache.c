@@ -18,7 +18,6 @@
 #include "apr_strings.h"
 #include "apr_file_io.h"
 #include "apr_time.h"
-#include "apr_memcache.h"
 #include "util_md5.h"
 
 #include <string.h>
