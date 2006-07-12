@@ -576,8 +576,6 @@ static int receive_body(wodan2_config_t *config, network_connection_t *connectio
 			
 		/* last escape hatch */
 		if (nr_bytes_read == 0)
-		if (nr_bytes_read == 0)
-		if (nr_bytes_read == 0)
 			break;
 	}
 	

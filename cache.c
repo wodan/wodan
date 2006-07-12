@@ -18,6 +18,7 @@
 #include "apr_strings.h"
 #include "apr_file_io.h"
 #include "apr_time.h"
+#include "apr_memcache.h"
 #include "util_md5.h"
 
 #include <string.h>
@@ -388,7 +389,7 @@ static char *get_expire_time(wodan2_config_t *config,
 	}
 
 	if (expire_time_rfc822_string == NULL) {
-		expire_time = r->request_time + cachetime;
+		expire_time = r->request_time + apr_time_from_sec(cachetime);
 		*cachetime_interval = cachetime;
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, r->server,
 			     "No expire-header found. Using default cache "
@@ -578,7 +579,7 @@ int cache_update_expiry_time(wodan2_config_t *config, request_rec *r)
 	/* calculate new expire_time */
 	expire_interval = (int) strtol(buffer, NULL, 10);
 	expire_time_string = ap_ht_time(r->pool, 
-					(r->request_time + expire_interval), 
+					(r->request_time + apr_time_from_sec(expire_interval)), 
 					"%a %d %b %Y %T %Z",1);
 	/* write new expire time field in cachefile */
 	apr_file_write_full(cachefile, expire_time_string, strlen(expire_time_string),
