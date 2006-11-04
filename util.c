@@ -1,4 +1,5 @@
 /**
+ * (c) 2000-2006 IC&S, The Netherlands
  * @file util.c
  *
  * Implements different utility functions that are used by Wodan2

@@ -1,3 +1,7 @@
+/**
+ * (c) 2000-2006 IC&S, The Netherlands
+ */
+
 #ifndef _UTIL_H_
 #define _UTIL_H_
 

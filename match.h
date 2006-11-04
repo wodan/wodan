@@ -1,5 +1,5 @@
 /** $Id: match.h 162 2005-02-16 15:36:06Z ilja $
- * (c) 2005 IC&S, The Netherlands 
+ * (c) 2005-2006 IC&S, The Netherlands 
  */
 
 /** \file match.h

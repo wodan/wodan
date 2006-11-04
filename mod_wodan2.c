@@ -1,6 +1,6 @@
 /* 
-
-*/ 
+ * (c) 2000-2006 IC&S, The Netherlands
+ */ 
 
 #define WODAN_NAME "Wodan2"
 #define WODAN_VERSION "0.1"

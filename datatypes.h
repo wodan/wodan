@@ -1,5 +1,5 @@
 /** $Id: datatypes.h 162 2005-02-16 15:36:06Z ilja $
- * (c) 2000-2005 IC&S, The Netherlands
+ * (c) 2000-2006 IC&S, The Netherlands
  */
 #ifndef _DATATYPES_H_
 #define _DATATYPES_H_
