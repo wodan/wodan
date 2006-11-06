@@ -33,10 +33,11 @@
 #define SECONDS_IN_WEEK (7 * SECONDS_IN_DAY)
 
 /**
- * this function functions like apr_table_overlay(). Perhaps it does exactly
- * the same, in which case this function can be safely removed!
+ * Copy key/data pair of overlay only if that key is not set for base.
+ *
+ * Note that there exists no apr method exactly like this one.
  */
-static int wodan_table_disjunction(apr_table_t *base, apr_table_t *overlay);
+static void wodan_table_add_when_empty(apr_table_t *base, apr_table_t *overlay);
 
 /**
  * apply "proxy pass reverse". This changes all "Location", "URI",
@@ -149,7 +150,7 @@ void adjust_headers_for_sending(wodan2_config_t *config, request_rec *r,
 	/* do more adjustments to the headers. This used to be in 
 	   mod_reverseproxy.c */
 	apr_table_unset(httpresponse->headers, "X-Wodan");
-	wodan_table_disjunction(httpresponse->headers, r->headers_out);
+	wodan_table_add_when_empty(httpresponse->headers, r->headers_out);
 	apply_proxy_pass_reverse(config, httpresponse->headers, r);
 	
 	r->headers_out = httpresponse->headers;
@@ -157,27 +158,20 @@ void adjust_headers_for_sending(wodan2_config_t *config, request_rec *r,
 	r->status = httpresponse->response;
 }
 
-/* TODO cleanup this function. It's not clear why it's called 'table_disjuction'.
- * Perhaps the function apr_table_overlay can be used, although that might 
- * overwrite some keys in the value that it shouldn't overwrite
+/* 
+ * Copy key/data pair of overlay only if that key is not set for base.
+ *
+ * Note that there exists no apr method exactly like this one.
  */
-int wodan_table_disjunction(apr_table_t *base, apr_table_t *overlay)
+void wodan_table_add_when_empty(apr_table_t *base, apr_table_t *overlay)
 {
 	const apr_array_header_t *overlay_array = apr_table_elts(overlay);
 	apr_table_entry_t *elts = (apr_table_entry_t *)overlay_array->elts;
-	int i, q = 0;
-	const char *val;
+	int i;
 	
 	for (i = 0; i < overlay_array->nelts; ++i) 
-    	{
-        	val = apr_table_get(base, elts[i].key);
-		if(!val)
-		{
+		if(!apr_table_get(base, elts[i].key))
 			apr_table_add(base, elts[i].key, elts[i].val);
-			q = 1;
-		}
-	}
-	return q;
 }
 
 void apply_proxy_pass_reverse(wodan2_config_t *config, apr_table_t* headers,
