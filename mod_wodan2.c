@@ -429,7 +429,7 @@ static const char *add_backend_timeout(cmd_parms *cmd,
 	}
 	timeout = apr_strtoi64(timeout_string, NULL, 10);
 	
-	// timeout is a number in miliseconds, so it needs to be multiplied by 1000
+	// timeout is a number in milliseconds, so it needs to be multiplied by 1000
 	timeout *= 1000;
 	
 	if (timeout > apr_time_from_sec(MAX_BACKEND_TIMEOUT_SEC))

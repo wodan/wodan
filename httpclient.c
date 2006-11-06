@@ -338,18 +338,18 @@ static int send_headers(network_connection_t *connection,
 		   backend. */
 		if(headers_elts[i].key == NULL || 
 		   headers_elts[i].val == NULL || 
-		   !strcasecmp(headers_elts[i].key, "Host") || 
-		   !strcasecmp(headers_elts[i].key, "Keep-Alive") || 
-		   !strcasecmp(headers_elts[i].key, "TE") || 
-		   !strcasecmp(headers_elts[i].key, "Trailer") || 
-		   !strcasecmp(headers_elts[i].key, 
-			       "Transfer-Encoding") || 
-		   !strcasecmp(headers_elts[i].key, 
-			       "Proxy-Authorization") ||
-		   !strcasecmp(headers_elts[i].key,
-			       "If-Modified-Since") ||
-		   !strcasecmp(headers_elts[i].key, "Cache-Control") ||
-		   !strcasecmp(headers_elts[i].key, "If-None-Match"))
+		   !strncasecmp(headers_elts[i].key, "Host", 4) || 
+		   !strncasecmp(headers_elts[i].key, "Keep-Alive", 10) || 
+		   !strncasecmp(headers_elts[i].key, "TE", 2) || 
+		   !strncasecmp(headers_elts[i].key, "Trailer", 7) || 
+		   !strncasecmp(headers_elts[i].key, 
+			       "Transfer-Encoding", 17) || 
+		   !strncasecmp(headers_elts[i].key, 
+			       "Proxy-Authorization", 19) ||
+		   !strncasecmp(headers_elts[i].key,
+			       "If-Modified-Since", 17) ||
+		   !strncasecmp(headers_elts[i].key, "Cache-Control", 12) ||
+		   !strncasecmp(headers_elts[i].key, "If-None-Match", 12))
 		{
 			continue;
 		}
@@ -510,7 +510,6 @@ static int receive_headers(network_connection_t *connection, request_rec *r,
 		}
 		apr_table_add(httpresponse->headers, key, val);
 		free(header);
-		header = 0;
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, r->server,
 			     "Added header: \"%s\", value: \"%s\"", 
 			     key, val);

@@ -195,9 +195,8 @@ int cache_read_from_cache (wodan2_config_t *config, request_rec *r,
                  counter++;
 			}
              apr_table_add(httpresponse->headers, key, bufferpointer);
-		if (strcasecmp(key, "Content-Length") == 0) {
+		if (strncasecmp(key, "Content-Length", 14) == 0)
 			content_length = atoi(bufferpointer);
-		}
 	}
 	adjust_headers_for_sending(config, r, httpresponse);
 	
@@ -362,7 +361,7 @@ static char *get_expire_time(wodan2_config_t *config,
 	    != NULL) {
 		ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, r->server,
 			     "Found an X-Wodan header \"%s\"", xwodan);
-		if (strcasecmp(xwodan, "no-cache") == 0) {
+		if (strncasecmp(xwodan, "no-cache", 8) == 0) {
 			ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0,
 				     r->server, "Header is 'no-cache'. "
 				     "Not caching..." );
