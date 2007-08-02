@@ -91,7 +91,7 @@ static const command_rec wodan2_commands[] =
 		"A path and a time string"),
 	AP_INIT_TAKE2("WodanDefaultCacheTimeMatch", add_default_cachetime_regex,
 		NULL, RSRC_CONF, "A regex pattern and a time string"),
-	AP_INIT_TAKE123("WodanDefaultCacheTimeHeaderMatch", 
+	AP_INIT_TAKE3("WodanDefaultCacheTimeHeaderMatch", 
 		add_default_cachetime_header, NULL, RSRC_CONF, 
 		"A header, a regex pattern and a time string"),
 	AP_INIT_FLAG("WodanRunOnCache", add_run_on_cache, NULL, RSRC_CONF,
